@@ -1,7 +1,6 @@
+package de.exellio.vitess
 
-package default
-
-package object vitess_init {
+package object exellio {
 
   type Traversable[+A] = scala.collection.immutable.Traversable[A]
   type Iterable[+A]    = scala.collection.immutable.Iterable[A]
