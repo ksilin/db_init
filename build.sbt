@@ -13,6 +13,8 @@ lazy val vitess_init =
         library.mysql,
         library.hikari,
         library.slickHikari,
+        library.logback,
+        library.scalaLogging,
         library.scalaCheck % Test,
         library.scalaTest  % Test,
       )
@@ -30,6 +32,9 @@ lazy val library =
       val mySql    = "5.1.47" //8.0.13"
       val hikariCp = "2.7.9"
 
+      val scalaLogging   = "3.9.2"
+      val logbackClassic = "1.2.3"
+
       val scalaCheck = "1.14.0"
       val scalaTest  = "3.0.5"
 
@@ -40,6 +45,9 @@ lazy val library =
     val slick       = "com.typesafe.slick" %% "slick"          % Version.slick
     val slickHikari = "com.typesafe.slick" %% "slick-hikaricp" % Version.slick
     val hikari      = "com.zaxxer"         % "HikariCP"        % Version.hikariCp
+
+    val logback      = "ch.qos.logback"             % "logback-classic" % Version.logbackClassic
+    val scalaLogging = "com.typesafe.scala-logging" %% "scala-logging"  % Version.scalaLogging
 
     val scalaCheck = "org.scalacheck" %% "scalacheck" % Version.scalaCheck
     val scalaTest  = "org.scalatest"  %% "scalatest"  % Version.scalaTest

@@ -3,7 +3,11 @@ import de.exellio.vitess.schema.{ ProdSchema, Product }
 import org.scalatest.concurrent.{ IntegrationPatience, ScalaFutures }
 import org.scalatest.{ FreeSpec, MustMatchers }
 import slick.basic.DatabaseConfig
+import slick.dbio.Effect.Write
 import slick.jdbc.JdbcProfile
+
+import scala.concurrent.Await
+import scala.concurrent.duration._
 
 class VitessSlickSpec
     extends FreeSpec
@@ -63,21 +67,29 @@ class VitessSlickSpec
 
       // InsertOrUpdate is not supported on a table without PK.
       val upserted = timed("upsert single") {
-        db.run(schema.products.insertOrUpdate(newProd)).futureValue
+        Await.result(db.run(schema.products.insertOrUpdate(newProd)), 1.second)
       }
       println(upserted) // always returns 1, even on update
     }
 
     "upsert multiple" in {
 
-      val newProds: List[Product] = (1 to 1000) map { i =>
+      val newProds: List[Product] = (1 to 100) map { i =>
         Product(s"testSKU$i", "testDescr", 99)
       } toList
 
+      val queries: List[profile.ProfileAction[
+        Int,
+        NoStream,
+        Write
+      ]] = newProds map { p =>
+        schema.products += p
+      }
+
       // 150 to 300s - abysmal!
       val upserted = timed("upsert multiple") {
-        newProds map { p =>
-          db.run(schema.products.insertOrUpdate(p)).futureValue
+        queries map { q =>
+          Await.result(db.run(q), 1.second)
         }
       }
       println(upserted)

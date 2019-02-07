@@ -1,10 +1,13 @@
 package de.exellio.vitess
 
-import de.exellio.vitess.schema.{ Nation, NationSchema, ProdSchema, Product }
+import de.exellio.vitess.schema.{ Nation, NationSchema }
 import org.scalatest.concurrent.{ IntegrationPatience, ScalaFutures }
 import org.scalatest.{ FreeSpec, MustMatchers }
 import slick.basic.DatabaseConfig
 import slick.jdbc.JdbcProfile
+
+import scala.concurrent.Await
+import scala.concurrent.duration._
 
 class TiDbSlickSpec
     extends FreeSpec
@@ -26,7 +29,7 @@ class TiDbSlickSpec
       from nation n""".as[(String, String)]
 
     val res = timed("read small table") {
-      db.run(q).futureValue
+      Await.result(db.run(q), 1.second)
     }
     res foreach println
   }
@@ -42,7 +45,7 @@ class TiDbSlickSpec
     "must retrieve data" in {
       val getNationsQuery = schema.nations.take(1000)
       val res = timed("retrieve data") {
-        db.run(getNationsQuery.result).futureValue
+        Await.result(db.run(getNationsQuery.result), 1.second)
       }
       res foreach println
 
@@ -68,21 +71,54 @@ class TiDbSlickSpec
 
       // InsertOrUpdate is not supported on a table without PK.
       val upserted = timed("upsert single") {
-        db.run(schema.nations.insertOrUpdate(newProd)).futureValue
+        Await.result(db.run(schema.nations.insertOrUpdate(newProd)), 1.second)
       }
       println(upserted) // always returns 1, even on update
     }
 
     "insert multiple" in {
 
-      val newProds: List[Nation] = (100 to 1100) map { i =>
+      val newCountries: List[Nation] = (100 to 1100) map { i =>
         Nation(i, "testNation", 99, "testComment")
       } toList
 
-      // 150 to 300s - abysmal!
+      // 20ms per insert - abysmal!
       val inserted = timed("insert multiple") {
-        newProds map { p =>
-          db.run(schema.nations += p).futureValue
+        newCountries map { p =>
+          Await.result(db.run(schema.nations += p), 1.second)
+        }
+      }
+      println(inserted)
+    }
+
+    "insert multiple at once" in {
+
+      val newCountries: List[Nation] = (100 to 1100) map { i =>
+        Nation(i, "testNation", 99, "testComment")
+      } toList
+
+      // 18s for bulk insert!
+      val inserted = timed("insert multiple") {
+        Await.result(db.run(schema.nations ++= newCountries), 10.minutes)
+      }
+      println(inserted)
+    }
+
+    "insert multiple plain sql" in {
+
+      def insertQuery(c: Nation): DBIO[Int] =
+        sqlu"insert into nation values (${c.n_nationkey}, ${c.n_name}, ${c.n_regionkey}, ${c.n_comment})"
+
+      val queries = (100 to 200) map { i =>
+        sqlu"insert into nation values ($i, 'testNation', 99, 'testComment')"
+      } toList
+
+      // plain sql still 20ms - same with or without connection pool
+      val inserted = timed("insert multiple") {
+        queries map { q =>
+          timed("insert single") {
+            Await.result(db.run(q), 1.second)
+          }
         }
       }
       println(inserted)
