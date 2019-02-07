@@ -11,8 +11,8 @@ lazy val vitess_init =
         library.quill,
         library.slick,
         library.mysql,
-//        library.hikari,
-//        library.slickHikari,
+        library.hikari,
+        library.slickHikari,
         library.scalaCheck % Test,
         library.scalaTest  % Test,
       )
